@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Labyrinth</title>
+<style>
+  :root[data-theme="dark"]{
+    --bg1:#050318; --bg2:#140a35; --bg3:#1c0f3f;
+    --wall:#8fb7ff; --player:#ffe3a3; --player-glow:#ffcf6b;
+    --trail:#a78bfa; --exit:#7fe7c4; --text:#e7e6ff;
+    --star:#ffffff; --star-op:0.9;
+    --btn-bg:rgba(255,255,255,0.06); --btn-bd:rgba(255,255,255,0.22); --btn-fg:#dfe3ff;
+  }
+  :root[data-theme="pastel"]{
+    --bg1:#fdf2ff; --bg2:#f1ecff; --bg3:#e8f3ff;
+    --wall:#b7a3e0; --player:#ff97ae; --player-glow:#ff7fa0;
+    --trail:#b6c9ff; --exit:#79d6c0; --text:#5d4d78;
+    --star:#ffffff; --star-op:0.55;
+    --btn-bg:rgba(255,255,255,0.55); --btn-bd:rgba(93,77,120,0.28); --btn-fg:#5d4d78;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;margin:0;overflow:hidden;}
+  body{
+    display:flex;flex-direction:column;align-items:center;
+    background:radial-gradient(ellipse at 50% 0%, var(--bg3), var(--bg2) 45%, var(--bg1) 100%);
+    font-family:Georgia,'Times New Roman',serif;
+    transition:background 0.6s ease;
+    touch-action:none;
+  }
+  #stars{position:fixed;inset:0;pointer-events:none;z-index:0;}
+  .star{position:absolute;border-radius:50%;background:var(--star);
+    animation:twinkle ease-in-out infinite alternate;}
+  @keyframes twinkle{from{opacity:0.08;} to{opacity:var(--star-op);}}
+
+  header{position:relative;z-index:2;padding:18px 0 6px;text-align:center;flex-shrink:0;}
+  h1{
+    margin:0;font-size:1.6rem;font-weight:400;letter-spacing:0.35em;
+    color:var(--text);text-transform:uppercase;
+    text-shadow:0 0 14px var(--player-glow), 0 0 28px var(--player-glow);
+    transition:color 0.6s ease, text-shadow 0.6s ease;
+  }
+
+  #themeToggle{
+    position:fixed;top:16px;right:16px;z-index:5;
+    width:42px;height:42px;border-radius:50%;
+    background:var(--btn-bg);border:1px solid var(--btn-bd);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    backdrop-filter:blur(4px);
+  }
+  #themeToggle svg{width:20px;height:20px;stroke:var(--btn-fg);fill:none;stroke-width:1.6;}
+  [data-theme="dark"] .icon-sun{display:none;}
+  [data-theme="pastel"] .icon-moon{display:none;}
+
+  #mazeWrap{
+    position:relative;z-index:2;flex:1;width:100%;
+    display:flex;align-items:center;justify-content:center;
+    min-height:0;padding:4px 10px;
+  }
+  #maze{width:auto;height:100%;max-width:96vw;display:block;}
+  #maze line{stroke:var(--wall);stroke-width:1.8;stroke-linecap:round;transition:stroke 0.6s ease;}
+  #player{fill:var(--player);transition:cx 0.14s linear, cy 0.14s linear, fill 0.6s ease;}
+  #trail circle{fill:var(--trail);opacity:0.45;transition:fill 0.6s ease;}
+  .exitMark{fill:var(--exit);opacity:0.8;transition:fill 0.6s ease;}
+  .exitMark.pulse{animation:pulse 0.7s ease-in-out 3;}
+  @keyframes pulse{0%,100%{opacity:0.8;} 50%{opacity:1;transform:scale(1.6);}}
+
+  #controls{
+    position:relative;z-index:3;flex-shrink:0;
+    display:grid;grid-template-columns:56px 56px 56px;grid-template-rows:52px 52px;
+    gap:8px;padding:10px 0 calc(14px + env(safe-area-inset-bottom,0px));
+    justify-content:center;
+  }
+  #controls button{
+    background:var(--btn-bg);border:1px solid var(--btn-bd);border-radius:14px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    backdrop-filter:blur(4px);
+  }
+  #controls button svg{width:20px;height:20px;stroke:var(--btn-fg);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  #btnUp{grid-column:2;grid-row:1;}
+  #btnLeft{grid-column:1;grid-row:2;}
+  #btnDown{grid-column:2;grid-row:2;}
+  #btnRight{grid-column:3;grid-row:2;}
+</style>
+</head>
+<body>
+  <div id="stars"></div>
+
+  <button id="themeToggle" aria-label="toggle theme">
+    <svg class="icon-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/></svg>
+    <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+  </button>
+
+  <header><h1>Labyrinth</h1></header>
+
+  <div id="mazeWrap"><svg id="maze" xmlns="http://www.w3.org/2000/svg"></svg></div>
+
+  <div id="controls">
+    <button id="btnUp" aria-label="up"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
+    <button id="btnLeft" aria-label="left"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button id="btnDown" aria-label="down"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+    <button id="btnRight" aria-label="right"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+  </div>
+
+<script>
+(function(){
+  const svgNS='http://www.w3.org/2000/svg';
+  function el(tag,attrs){
+    const e=document.createElementNS(svgNS,tag);
+    for(const k in attrs) e.setAttribute(k,attrs[k]);
+    return e;
+  }
+
+  function initStars(){
+    const c=document.getElementById('stars');
+    let frag=document.createDocumentFragment();
+    for(let i=0;i<130;i++){
+      const s=document.createElement('div');
+      s.className='star';
+      const size=(Math.random()*1.8+0.8).toFixed(2);
+      s.style.left=(Math.random()*100)+'%';
+      s.style.top=(Math.random()*100)+'%';
+      s.style.width=size+'px';
+      s.style.height=size+'px';
+      s.style.animationDelay=(Math.random()*5).toFixed(2)+'s';
+      s.style.animationDuration=(Math.random()*3+2).toFixed(2)+'s';
+      frag.appendChild(s);
+    }
+    c.appendChild(frag);
+  }
+
+  function generateMaze(cols,rows){
+    const grid=[];
+    for(let y=0;y<rows;y++){
+      const row=[];
+      for(let x=0;x<cols;x++) row.push({N:true,E:true,S:true,W:true,v:false});
+      grid.push(row);
+    }
+    const opp={N:'S',S:'N',E:'W',W:'E'};
+    const stack=[{x:0,y:0}];
+    grid[0][0].v=true;
+    while(stack.length){
+      const {x,y}=stack[stack.length-1];
+      const nbrs=[];
+      if(y>0 && !grid[y-1][x].v) nbrs.push({x,y:y-1,d:'N'});
+      if(x<cols-1 && !grid[y][x+1].v) nbrs.push({x:x+1,y,d:'E'});
+      if(y<rows-1 && !grid[y+1][x].v) nbrs.push({x,y:y+1,d:'S'});
+      if(x>0 && !grid[y][x-1].v) nbrs.push({x:x-1,y,d:'W'});
+      if(nbrs.length){
+        const n=nbrs[Math.floor(Math.random()*nbrs.length)];
+        grid[y][x][n.d]=false;
+        grid[n.y][n.x][opp[n.d]]=false;
+        grid[n.y][n.x].v=true;
+        stack.push({x:n.x,y:n.y});
+      } else stack.pop();
+    }
+    return grid;
+  }
+
+  let cols,rows,cellSize,grid,px,py,playerEl,trailGroup,exitEl,winTimer;
+
+  function renderMaze(){
+    const svg=document.getElementById('maze');
+    svg.innerHTML='';
+    svg.setAttribute('viewBox',`0 0 ${cols*cellSize} ${rows*cellSize}`);
+
+    const defs=el('defs',{});
+    defs.innerHTML='<filter id="glow" x="-60%" y="-60%" width="220%" height="220%">'
+      +'<feGaussianBlur stdDeviation="2.4" result="b"/>'
+      +'<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
+    svg.appendChild(defs);
+
+    const walls=el('g',{filter:'url(#glow)'});
+    walls.appendChild(el('line',{x1:0,y1:0,x2:cols*cellSize,y2:0}));
+    walls.appendChild(el('line',{x1:0,y1:0,x2:0,y2:rows*cellSize}));
+    for(let y=0;y<rows;y++){
+      for(let x=0;x<cols;x++){
+        const c=grid[y][x];
+        if(c.E) walls.appendChild(el('line',{x1:(x+1)*cellSize,y1:y*cellSize,x2:(x+1)*cellSize,y2:(y+1)*cellSize}));
+        if(c.S) walls.appendChild(el('line',{x1:x*cellSize,y1:(y+1)*cellSize,x2:(x+1)*cellSize,y2:(y+1)*cellSize}));
+      }
+    }
+    svg.appendChild(walls);
+
+    exitEl=el('circle',{cx:(cols-0.5)*cellSize,cy:(rows-0.5)*cellSize,r:cellSize*0.26,class:'exitMark',filter:'url(#glow)'});
+    svg.appendChild(exitEl);
+
+    trailGroup=el('g',{id:'trail',filter:'url(#glow)'});
+    svg.appendChild(trailGroup);
+
+    playerEl=el('circle',{cx:0.5*cellSize,cy:0.5*cellSize,r:cellSize*0.28,id:'player',filter:'url(#glow)'});
+    svg.appendChild(playerEl);
+  }
+
+  function addTrail(x,y){
+    trailGroup.appendChild(el('circle',{
+      cx:(x+0.5)*cellSize, cy:(y+0.5)*cellSize, r:cellSize*0.09
+    }));
+  }
+
+  function updatePlayer(){
+    playerEl.setAttribute('cx',(px+0.5)*cellSize);
+    playerEl.setAttribute('cy',(py+0.5)*cellSize);
+  }
+
+  function move(dir){
+    const map={up:'N',down:'S',left:'W',right:'E'};
+    const key=map[dir];
+    if(!key) return;
+    const c=grid[py][px];
+    if(c[key]) return;
+    addTrail(px,py);
+    if(dir==='up') py--; else if(dir==='down') py++; else if(dir==='left') px--; else px++;
+    updatePlayer();
+    if(px===cols-1 && py===rows-1) onWin();
+  }
+
+  function onWin(){
+    exitEl.classList.add('pulse');
+    clearTimeout(winTimer);
+    winTimer=setTimeout(init,1500);
+  }
+
+  function init(){
+    const wrap=document.getElementById('mazeWrap');
+    const rect=wrap.getBoundingClientRect();
+    cellSize = window.innerWidth<640 ? 12 : 16;
+    cols=Math.max(20,Math.min(50,Math.floor(rect.width/cellSize)));
+    rows=Math.max(24,Math.min(60,Math.floor(rect.height/cellSize)));
+    grid=generateMaze(cols,rows);
+    px=0;py=0;
+    renderMaze();
+    updatePlayer();
+  }
+
+  document.getElementById('btnUp').addEventListener('click',()=>move('up'));
+  document.getElementById('btnDown').addEventListener('click',()=>move('down'));
+  document.getElementById('btnLeft').addEventListener('click',()=>move('left'));
+  document.getElementById('btnRight').addEventListener('click',()=>move('right'));
+
+  window.addEventListener('keydown',(e)=>{
+    const k=e.key.toLowerCase();
+    if(k==='arrowup'||k==='w') move('up');
+    else if(k==='arrowdown'||k==='s') move('down');
+    else if(k==='arrowleft'||k==='a') move('left');
+    else if(k==='arrowright'||k==='d') move('right');
+    else return;
+    e.preventDefault();
+  });
+
+  document.getElementById('themeToggle').addEventListener('click',()=>{
+    const html=document.documentElement;
+    const cur=html.getAttribute('data-theme');
+    html.setAttribute('data-theme', cur==='dark' ? 'pastel' : 'dark');
+  });
+
+  initStars();
+  init();
+  window.addEventListener('resize',()=>{ clearTimeout(window.__rz); window.__rz=setTimeout(init,300); });
+})();
+</script>
+</body>
+</html>
